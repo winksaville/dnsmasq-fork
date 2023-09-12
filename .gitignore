@@ -12,3 +12,5 @@ debian/substvars
 debian/utils-substvars
 debian/trees/
 debian/build/
+wink.dnsmasq.leases
+wink.dnsmasq.log
