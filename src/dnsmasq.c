@@ -102,7 +102,7 @@ int main (int argc, char **argv)
   rand_init(); /* Must precede read_opts() */
   
   read_opts(argc, argv, compile_opts);
- 
+
 #ifdef HAVE_LINUX_NETWORK
   daemon->kernel_version = kernel_version();
 #endif
@@ -710,6 +710,8 @@ int main (int argc, char **argv)
 	 }
      }
    
+  my_syslog(LOG_INFO, "wink: main");
+
    /* if we are to run scripts, we need to fork a helper before dropping root. */
   daemon->helperfd = -1;
 #ifdef HAVE_SCRIPT 
