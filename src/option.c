@@ -1299,6 +1299,7 @@ static char *set_prefix(char *arg)
 
 static struct dhcp_netid *dhcp_netid_create(const char *net, struct dhcp_netid *next)
 {
+  printf(_("wink: dhcp_netid_create: net=%s next=%p\n"), net, next);
   struct dhcp_netid *tt;
   tt = opt_malloc(sizeof (struct dhcp_netid));
   tt->net = opt_string_alloc(net);
@@ -1310,6 +1311,7 @@ static void dhcp_netid_free(struct dhcp_netid *nid)
 {
   while (nid)
     {
+      printf(_("wink: dhcp_netid_free: %s\n"), nid->net);
       struct dhcp_netid *tmp = nid;
       nid = nid->next;
       free(tmp->net);
@@ -1426,6 +1428,7 @@ static int parse_dhcp_opt(char *errstr, char *arg, int flags)
   new->val = NULL;
   new->opt = 0;
   
+  printf(_("wink: parse_dhcp_opt:+ errstr=%s arg=%s flags=%0x\n"), errstr, arg, flags);
   while (arg)
     {
       comma = split(arg);      
@@ -1949,8 +1952,10 @@ static int parse_dhcp_opt(char *errstr, char *arg, int flags)
       daemon->dhcp_opts = new;
     }
     
+  printf(_("wink: parse_dhcp_opt:- [rv=1] errstr=%s arg=%s flags=%0x\n"), errstr, arg, flags);
   return 1;
 on_error:
+  printf(_("wink: parse_dhcp_opt:- [rv=0] error errstr=%s arg=%s flags=%0x\n"), errstr, arg, flags);
   dhcp_opt_free(new);
   return 0;
 }
@@ -1972,6 +1977,7 @@ static int one_opt(int option, char *arg, char *errstr, char *gen_err, int comma
   int i;
   char *comma;
 
+  printf(_("wink: one_opt:+ option=%c arg=%s errstr=%s gen_err=%s command_line=%d servers_only=%d\n"), option, arg, errstr, gen_err, command_line, servers_only);
   if (option == '?')
     ret_err(gen_err);
   
@@ -2000,6 +2006,7 @@ static int one_opt(int option, char *arg, char *errstr, char *gen_err, int comma
 	 if (rept != ARG_DUP && rept != ARG_ONE && rept != ARG_USED_CL) 
 	   {
 	     set_option_bool(rept);
+             printf(_("wink: one_opt:- [set_opt_boot(%d) rv=1] option=%c arg=%s errstr=%s gen_err=%s command_line=%d servers_only=%d\n"), rept, option, arg, errstr, gen_err, command_line, servers_only);
 	     return 1;
 	   }
        
@@ -3975,14 +3982,17 @@ static int one_opt(int option, char *arg, char *errstr, char *gen_err, int comma
 		/* dhcp-host has strange backwards-compat needs. */
 		else if (strstr(arg, "net:") == arg || strstr(arg, "set:") == arg)
 		  {
+                    printf(_("wink: %s\n"), arg);
 		    struct dhcp_netid_list *newlist = opt_malloc(sizeof(struct dhcp_netid_list));
 		    newlist->next = new->netid;
 		    new->netid = newlist;
 		    newlist->list = dhcp_netid_create(arg+4, NULL);
 		  }
 		else if (strstr(arg, "tag:") == arg)
-		  new->filter = dhcp_netid_create(arg+4, new->filter);
-		  
+                  {
+                    printf(_("wink: %s\n"), arg);
+                    new->filter = dhcp_netid_create(arg+4, new->filter);
+                  }
 #ifdef HAVE_DHCP6
 		else if (arg[0] == '[' && arg[strlen(arg)-1] == ']')
 		  {
@@ -4066,6 +4076,7 @@ static int one_opt(int option, char *arg, char *errstr, char *gen_err, int comma
 		      sprintf(errstr, _("duplicate dhcp-host IP address %s"),
 			      daemon->addrbuff);
 		      dhcp_config_free(new);
+                      printf(_("wink: one_opt:- [same IP rv=0] option=%c arg=%s errstr=%s gen_err=%s command_line=%d servers_only=%d\n"), option, arg, errstr, gen_err, command_line, servers_only);
 		      return 0;
 		    }	      
 	      }
@@ -4222,11 +4233,14 @@ static int one_opt(int option, char *arg, char *errstr, char *gen_err, int comma
     case LOPT_FORCE:    /* --dhcp-option-force */
     case LOPT_OPTS:
     case LOPT_MATCH:    /* --dhcp-match */
-      return parse_dhcp_opt(errstr, arg, 
+      {
+        int rv = parse_dhcp_opt(errstr, arg,
 			    option == LOPT_FORCE ? DHOPT_FORCE : 
 			    (option == LOPT_MATCH ? DHOPT_MATCH :
 			     (option == LOPT_OPTS ? DHOPT_BANK : 0)));
-
+        printf(_("wink: one_opt:- [parse_dhcp_opt rv=%d] option=%c arg=%s errstr=%s gen_err=%s command_line=%d servers_only=%d\n"), rv, option, arg, errstr, gen_err, command_line, servers_only);
+        return rv;
+      }
     case LOPT_NAME_MATCH: /* --dhcp-name-match */
       {
 	struct dhcp_match_name *new;
@@ -5319,11 +5333,13 @@ err:
       
     }
   
+  printf(_("wink: one_opt:- [rv=1] option=%c arg=%s errstr=%s gen_err=%s command_line=%d servers_only=%d\n"), option, arg, errstr, gen_err, command_line, servers_only);
   return 1;
 }
 
 static void read_file(char *file, FILE *f, int hard_opt, int from_script)	
 {
+  printf(_("wink: read_file:+ file=%s hard_opt=%d from_script=%d\n"), file, hard_opt, from_script);
   volatile int lineno = 0;
   char *buff = daemon->namebuff;
   
@@ -5462,6 +5478,7 @@ static void read_file(char *file, FILE *f, int hard_opt, int from_script)
     }
 
   mem_recover = 0;
+  printf(_("wink: read_file:- file=%s hard_opt=%d from_script=%d\n"), file, hard_opt, from_script);
 }
 
 #if defined(HAVE_DHCP) && defined(HAVE_INOTIFY)
@@ -5480,6 +5497,7 @@ int option_read_dynfile(char *file, int flags)
 
 static int one_file(char *file, int hard_opt)
 {
+  printf(_("wink: one_file:+ file=%s hard_opt=%d\n"), file, hard_opt);
   FILE *f;
   int nofile_ok = 0, do_popen = 0;
   static int read_stdin = 0;
@@ -5568,6 +5586,7 @@ static int one_file(char *file, int hard_opt)
   else
     fclose(f);
 	
+  printf(_("wink: one_file:- [rv=1] file=%s hard_opt=%d\n"), file, hard_opt);
   return 1;
 }
 
@@ -5794,6 +5813,7 @@ void reread_dhcp(void)
 
 void read_opts(int argc, char **argv, char *compile_opts)
 {
+  printf(_("wink: read_opts:+ argc=%d argv=%p compile_opts=%s\n"), argc, argv, compile_opts);
   size_t argbuf_size = MAXDNAME;
   char *argbuf = opt_malloc(argbuf_size);
   /* Note that both /000 and '.' are allowed within labels. These get
@@ -6137,4 +6157,5 @@ void read_opts(int argc, char **argv, char *compile_opts)
       fprintf(stderr, "dnsmasq: %s.\n", _("syntax check OK"));
       exit(0);
     }
+  printf(_("wink: read_opts:- argc=%d argv=%p compile_opts=%s\n"), argc, argv, compile_opts);
 }  
