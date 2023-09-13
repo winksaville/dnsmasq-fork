@@ -3982,7 +3982,7 @@ static int one_opt(int option, char *arg, char *errstr, char *gen_err, int comma
 		/* dhcp-host has strange backwards-compat needs. */
 		else if (strstr(arg, "net:") == arg || strstr(arg, "set:") == arg)
 		  {
-                    printf(_("wink: %s\n"), arg);
+                    printf(_("wink: one_opt: G --dhcp-host net:||set: arg=%s\n"), arg);
 		    struct dhcp_netid_list *newlist = opt_malloc(sizeof(struct dhcp_netid_list));
 		    newlist->next = new->netid;
 		    new->netid = newlist;
@@ -3990,7 +3990,7 @@ static int one_opt(int option, char *arg, char *errstr, char *gen_err, int comma
 		  }
 		else if (strstr(arg, "tag:") == arg)
                   {
-                    printf(_("wink: %s\n"), arg);
+                    printf(_("wink: one_opt: G --dhcp-host arg=%s\n"), arg);
                     new->filter = dhcp_netid_create(arg+4, new->filter);
                   }
 #ifdef HAVE_DHCP6
