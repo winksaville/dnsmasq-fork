@@ -1756,6 +1756,7 @@ int do_snoop_script_run(void);
 
 /* dhcp-common.c */
 #ifdef HAVE_DHCP
+void printf_dhcp_netids(struct dhcp_netid *netid);
 void dhcp_common_init(void);
 ssize_t recv_dhcp_packet(int fd, struct msghdr *msg);
 struct dhcp_netid *run_tag_if(struct dhcp_netid *tags);

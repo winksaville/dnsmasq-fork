@@ -104,6 +104,8 @@ size_t dhcp_reply(struct dhcp_context *context, char *iface_name, int int_index,
   unsigned char *class = NULL;
 #endif
 
+  printf("wink: dhcp_reply:+\n");
+
   subnet_addr.s_addr = override.s_addr = 0;
 
   /* set tag with name == interface */
@@ -112,10 +114,16 @@ size_t dhcp_reply(struct dhcp_context *context, char *iface_name, int int_index,
   netid = &iface_id; 
   
   if (mess->op != BOOTREQUEST || mess->hlen > DHCP_CHADDR_MAX)
+   {
+    printf("wink: dhcp_reply:- rv=0, BOOTREQUEST or too big\n");
     return 0;
+   }
    
   if (mess->htype == 0 && mess->hlen != 0)
+   {
+    printf("wink: dhcp_reply:- rv=0, htype == 0 && hlen != 0\n");
     return 0;
+   }
 
   /* check for DHCP rather than BOOTP */
   if ((opt = option_find(mess, sz, OPTION_MESSAGE_TYPE, 1)))
@@ -124,7 +132,10 @@ size_t dhcp_reply(struct dhcp_context *context, char *iface_name, int int_index,
       
       /* only insist on a cookie for DHCP. */
       if (memcmp(mess->options, &cookie, sizeof(u32)) != 0)
-	return 0;
+       {
+        printf("wink: dhcp_reply:- rv=0, not DHCP cookie\n");
+        return 0;
+       }
       
       mess_type = option_uint(opt, 0, 1);
       
@@ -388,6 +399,7 @@ size_t dhcp_reply(struct dhcp_context *context, char *iface_name, int int_index,
 	}
       my_syslog(MS_DHCP | LOG_WARNING, _("no address range available for DHCP request %s %s"),
 		via, daemon->addrbuff);
+      printf("wink: dhcp_reply:- rv=0, no address range available for DHCP request\n");
       return 0;
     }
 
@@ -551,7 +563,10 @@ size_t dhcp_reply(struct dhcp_context *context, char *iface_name, int int_index,
 
       /* must have a MAC addr for bootp */
       if (mess->htype == 0 || mess->hlen == 0 || (context->flags & CONTEXT_PROXY))
-	return 0;
+       {
+         printf("wink: dhcp_reply:- rv=0, htype == 0 || hlen == 0 || CONTEXT_PROXY\n");
+	 return 0;
+       }
       
       if (have_config(config, CONFIG_DISABLE))
 	message = _("disabled");
@@ -592,6 +607,8 @@ size_t dhcp_reply(struct dhcp_context *context, char *iface_name, int int_index,
       netid = &bootp_id;
       
       tagif_netid = run_tag_if(netid);
+      printf("wink: dhcp_reply: tagif_netid:");
+      printf_dhcp_netids(tagif_netid);
 
       for (id_list = daemon->dhcp_ignore; id_list; id_list = id_list->next)
 	if (match_netid(id_list->list, tagif_netid, 0))
@@ -676,7 +693,9 @@ size_t dhcp_reply(struct dhcp_context *context, char *iface_name, int int_index,
       daemon->metrics[METRIC_BOOTP]++;
       log_packet("BOOTP", logaddr, mess->chaddr, mess->hlen, iface_name, NULL, message, mess->xid);
       
-      return message ? 0 : dhcp_packet_size(mess, agent_id, real_end);
+      int rv = message ? 0 : dhcp_packet_size(mess, agent_id, real_end);
+      printf("wink: dhcp_reply:- rv=%d mtype=0 || !pxe\n", rv);
+      return rv;
     }
       
   if ((opt = option_find(mess, sz, OPTION_CLIENT_FQDN, 3)))
@@ -878,11 +897,15 @@ size_t dhcp_reply(struct dhcp_context *context, char *iface_name, int int_index,
 	  struct dhcp_opt opt71;
 
 	  if (ignore)
-	    return 0;
+            {
+              printf("wink: dhcp_reply:- rv=0, ignore enable_pxe && is_pxe_client\n");
+	      return 0;
+            }
 
 	  if (layer & 0x8000)
 	    {
 	      my_syslog(MS_DHCP | LOG_ERR, _("PXE BIS not supported"));
+              printf("wink: dhcp_reply:- rv=0, PXE BIS not supported\n");
 	      return 0;
 	    }
 
@@ -898,7 +921,10 @@ size_t dhcp_reply(struct dhcp_context *context, char *iface_name, int int_index,
 	      break;
 	  
 	  if (!service || !service->basename || !context)
-	    return 0;
+            {
+              printf("wink: dhcp_reply:- rv=0, !service || !basename || !context\n");
+	      return 0;
+            }
 	  	  
 	  clear_packet(mess, end);
 	  
@@ -933,7 +959,9 @@ size_t dhcp_reply(struct dhcp_context *context, char *iface_name, int int_index,
 	  
 	  log_packet("PXE", &mess->yiaddr, emac, emac_len, iface_name, (char *)mess->file, NULL, mess->xid);
 	  log_tags(tagif_netid, ntohl(mess->xid));
-	  return dhcp_packet_size(mess, agent_id, real_end);	  
+	  int rv = dhcp_packet_size(mess, agent_id, real_end);	  
+          printf("wink: dhcp_reply:- rv=%d, PXE\n", rv);
+          return rv;
 	}
       
       if ((opt = option_find(mess, sz, OPTION_ARCH, 2)))
@@ -1010,7 +1038,9 @@ size_t dhcp_reply(struct dhcp_context *context, char *iface_name, int int_index,
 		  log_tags(tagif_netid, ntohl(mess->xid));
 		  if (!ignore)
 		    apply_delay(mess->xid, recvtime, tagif_netid);
-		  return ignore ? 0 : dhcp_packet_size(mess, agent_id, real_end);	  
+		  int rv = ignore ? 0 : dhcp_packet_size(mess, agent_id, real_end);	  
+                  printf("wink: dhcp_reply:- rv=%d, PXE\n", rv);
+                  return rv;
 		}
 	    }
 	}
@@ -1018,7 +1048,10 @@ size_t dhcp_reply(struct dhcp_context *context, char *iface_name, int int_index,
 
   /* if we're just a proxy server, go no further */
   if ((context->flags & CONTEXT_PROXY) || pxe)
-    return 0;
+    {
+      printf("wink: dhcp_reply:- rv=0, ignore we are proxy server\n");
+      return 0;
+    }
   
   if ((opt = option_find(mess, sz, OPTION_REQUESTED_OPTIONS, 0)))
     {
@@ -1032,13 +1065,19 @@ size_t dhcp_reply(struct dhcp_context *context, char *iface_name, int int_index,
     case DHCPDECLINE:
       if (!(opt = option_find(mess, sz, OPTION_SERVER_IDENTIFIER, INADDRSZ)) ||
 	  option_addr(opt).s_addr != server_id(context, override, fallback).s_addr)
-	return 0;
+        {
+          printf("wink: dhcp_reply:- rv=0, ignore DHCPDECLINE\n");
+	  return 0;
+        }
       
       /* sanitise any message. Paranoid? Moi? */
       sanitise(option_find(mess, sz, OPTION_MESSAGE, 1), daemon->dhcp_buff);
       
       if (!(opt = option_find(mess, sz, OPTION_REQUESTED_IP, INADDRSZ)))
-	return 0;
+        {
+          printf("wink: dhcp_reply:- rv=0, ignore OPTION_REQUESTED_IP none\n");
+	  return 0;
+        }
       
       daemon->metrics[METRIC_DHCPDECLINE]++;
       log_packet("DHCPDECLINE", option_ptr(opt, 0), emac, emac_len, iface_name, NULL, daemon->dhcp_buff, mess->xid);
@@ -1061,13 +1100,17 @@ size_t dhcp_reply(struct dhcp_context *context, char *iface_name, int int_index,
 	for (; context; context = context->current)
 	  context->addr_epoch++;
       
+      printf("wink: dhcp_reply:- rv=0, DHCPDECLINE\n");
       return 0;
 
     case DHCPRELEASE:
       if (!(context = narrow_context(context, mess->ciaddr, tagif_netid)) ||
 	  !(opt = option_find(mess, sz, OPTION_SERVER_IDENTIFIER, INADDRSZ)) ||
 	  option_addr(opt).s_addr != server_id(context, override, fallback).s_addr)
-	return 0;
+        {
+          printf("wink: dhcp_reply:- rv=0, DHCPRELEASE no OPTION_SERVER_IDENTIFIER\n");
+	  return 0;
+        }
       
       if (lease && lease->addr.s_addr == mess->ciaddr.s_addr)
 	lease_prune(lease, now);
@@ -1077,13 +1120,17 @@ size_t dhcp_reply(struct dhcp_context *context, char *iface_name, int int_index,
       daemon->metrics[METRIC_DHCPRELEASE]++;
       log_packet("DHCPRELEASE", &mess->ciaddr, emac, emac_len, iface_name, NULL, message, mess->xid);
 	
+      printf("wink: dhcp_reply:- rv=0, DHCPRELEASE\n");
       return 0;
       
     case DHCPDISCOVER:
       if (ignore || have_config(config, CONFIG_DISABLE))
 	{
 	  if (option_bool(OPT_QUIET_DHCP))
-	    return 0;
+            {
+              printf("wink: dhcp_reply:- rv=0, DHCPDISCOVER OPT_QUIET_DHCP\n");
+	      return 0;
+            }
 	  message = _("ignored");
 	  opt = NULL;
 	}
@@ -1145,7 +1192,10 @@ size_t dhcp_reply(struct dhcp_context *context, char *iface_name, int int_index,
       log_packet("DHCPDISCOVER", opt ? option_ptr(opt, 0) : NULL, emac, emac_len, iface_name, NULL, message, mess->xid); 
 
       if (message || !(context = narrow_context(context, mess->yiaddr, tagif_netid)))
-	return 0;
+        {
+          printf("wink: dhcp_reply:- rv=0, DHCPDISCOVER %s\n", message);
+	  return 0;
+        }
 
       if (context->netid.net)
 	{
@@ -1181,12 +1231,16 @@ size_t dhcp_reply(struct dhcp_context *context, char *iface_name, int int_index,
       do_options(context, mess, end, req_options, offer_hostname, get_domain(mess->yiaddr), 
 		 netid, subnet_addr, fqdn_flags, borken_opt, pxearch, uuid, vendor_class_len, now, time, fuzz, pxevendor);
       
-      return dhcp_packet_size(mess, agent_id, real_end);
-	
+      int rv = dhcp_packet_size(mess, agent_id, real_end);
+      printf("wink: dhcp_reply:- rv=%d DHCPOFFER\n", rv);
+      return rv;
 
     case DHCPREQUEST:
       if (ignore || have_config(config, CONFIG_DISABLE))
-	return 0;
+        {
+          printf("wink: dhcp_reply:- rv=0 DHCPREQUEST ignore CONFIG_DISABLE\n");
+	  return 0;
+        }
       if ((opt = option_find(mess, sz, OPTION_REQUESTED_IP, INADDRSZ)))
 	{
 	  /* SELECTING  or INIT_REBOOT */
@@ -1203,7 +1257,10 @@ size_t dhcp_reply(struct dhcp_context *context, char *iface_name, int int_index,
 	      if (override.s_addr != 0)
 		{
 		  if (option_addr(opt).s_addr != override.s_addr)
-		    return 0;
+                    {
+                      printf("wink: dhcp_reply:- rv=0 DHCPREQUEST override.s_addr != 0 and differs from s_addr\n");
+		      return 0;
+                    }
 		}
 	      else 
 		{
@@ -1234,7 +1291,10 @@ size_t dhcp_reply(struct dhcp_context *context, char *iface_name, int int_index,
 			     should be faulted, so that the client establishes 
 			     communication with us, otherwise, silently ignore. */
 			  if (!option_bool(OPT_AUTHORITATIVE))
-			    return 0;
+                            {
+                              printf("wink: dhcp_reply:- rv=0 DHCPREQUEST !option_bool(OPT_AUTHORITATIVE)\n");
+			      return 0;
+                            }
 			  message = _("wrong server-ID");
 			}
 		    }
@@ -1251,7 +1311,10 @@ size_t dhcp_reply(struct dhcp_context *context, char *iface_name, int int_index,
 	    {
 	      /* INIT-REBOOT */
 	      if (!lease && !option_bool(OPT_AUTHORITATIVE))
-		return 0;
+                {
+                  printf("wink: dhcp_reply:- rv=0 DHCPREQUEST !lease && !option_bool(OPT_AUTHORITATIVE)\n");
+		  return 0;
+                }
 	      
 	      if (lease && lease->addr.s_addr != mess->yiaddr.s_addr)
 		message = _("wrong address");
@@ -1271,7 +1334,10 @@ size_t dhcp_reply(struct dhcp_context *context, char *iface_name, int int_index,
 		 if the lease is held by another server. Just ignore it in that case. 
 		 If the request is unicast to us, then somethings wrong, NAK */
 	      if (!unicast_dest)
-		return 0;
+                {
+                  printf("wink: dhcp_reply:- rv=0 DHCPREQUEST !unicast_dest\n");
+		  return 0;
+                }
 	      message = _("lease not found");
 	      /* ensure we broadcast NAK */
 	      unicast_dest = 0;
@@ -1362,7 +1428,10 @@ size_t dhcp_reply(struct dhcp_context *context, char *iface_name, int int_index,
 
 	  /* rapid commit case: lease allocate failed but don't send DHCPNAK */
 	  if (rapid_commit)
-	    return 0;
+            {
+              printf("wink: dhcp_reply:- rv=0 lease allocate failed\n");
+	      return 0;
+            }
 	  
 	  mess->yiaddr.s_addr = 0;
 	  clear_packet(mess, end);
@@ -1529,7 +1598,9 @@ size_t dhcp_reply(struct dhcp_context *context, char *iface_name, int int_index,
 		     netid, subnet_addr, fqdn_flags, borken_opt, pxearch, uuid, vendor_class_len, now, time, fuzz, pxevendor);
 	}
 
-      return dhcp_packet_size(mess, agent_id, real_end); 
+      rv = dhcp_packet_size(mess, agent_id, real_end); 
+      printf("wink: dhcp_reply:- rv=%d DHCPACK\n", rv);
+      return rv;
       
     case DHCPINFORM:
       if (ignore || have_config(config, CONFIG_DISABLE))
@@ -1539,7 +1610,10 @@ size_t dhcp_reply(struct dhcp_context *context, char *iface_name, int int_index,
       log_packet("DHCPINFORM", &mess->ciaddr, emac, emac_len, iface_name, message, NULL, mess->xid);
      
       if (message || mess->ciaddr.s_addr == 0)
-	return 0;
+        {
+          printf("wink: dhcp_reply:- rv=0 DHCPINFORM message NULL or mess->ciaddr.s_addr == 0\n");
+	  return 0;
+        }
 
       /* For DHCPINFORM only, cope without a valid context */
       context = narrow_context(context, mess->ciaddr, tagif_netid);
@@ -1596,9 +1670,12 @@ size_t dhcp_reply(struct dhcp_context *context, char *iface_name, int int_index,
 		 netid, subnet_addr, fqdn_flags, borken_opt, pxearch, uuid, vendor_class_len, now, 0xffffffff, 0, pxevendor);
       
       *is_inform = 1; /* handle reply differently */
-      return dhcp_packet_size(mess, agent_id, real_end); 
+      rv = dhcp_packet_size(mess, agent_id, real_end); 
+      printf("wink: dhcp_reply:- rv=%d DHCPACK\n", rv);
+      return rv;
     }
   
+  printf("wink: dhcp_reply:- rv=0\n");
   return 0;
 }
 
@@ -1777,6 +1854,8 @@ static unsigned char *option_find(struct dhcp_packet *mess, size_t size, int opt
 {
   unsigned char *ret, *overload;
   
+  //printf("wink: option_find:+ dhcp_packet op=%d size=%d opt_type=%d minsize=%d\n", mess->op, size, opt_type, minsize);
+
   /* skip over DHCP cookie; */
   if ((ret = option_find1(&mess->options[0] + sizeof(u32), ((unsigned char *)mess) + size, opt_type, minsize)))
     return ret;

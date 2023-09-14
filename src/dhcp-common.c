@@ -18,10 +18,11 @@
 
 #ifdef HAVE_DHCP
 
-void printf_dhcp_netid(struct dhcp_netid *netid)
+void printf_dhcp_netids(struct dhcp_netid *netid)
 {
   for (; netid; netid = netid->next)
-    printf("netid: %s\n", netid->net);
+    printf("%s ", netid->net);
+  printf("\n");
 }
 
 void dhcp_common_init(void)
@@ -141,7 +142,8 @@ struct dhcp_netid *option_filter(struct dhcp_netid *tags, struct dhcp_netid *con
   struct dhcp_opt *opt;
   struct dhcp_opt *tmp;  
 
-  printf("wink: option_filter:+ ");
+  printf("wink: option_filter:+ tags: ");
+  printf_dhcp_netids(tags);
 
   /* flag options which are valid with the current tag set (sans context tags) */
   for (opt = opts; opt; opt = opt->next)
@@ -202,9 +204,8 @@ struct dhcp_netid *option_filter(struct dhcp_netid *tags, struct dhcp_netid *con
 	if (tmp->opt == opt->opt)
 	  tmp->flags &= ~DHOPT_TAGOK;
   
-  printf("wink: option_filter:- ");
-  printf_dhcp_netid(tagif);
-  printf("\n");
+  printf("wink: option_filter:- tagif: ");
+  printf_dhcp_netids(tagif);
 
   return tagif;
 }
