@@ -2121,11 +2121,11 @@ static struct dhcp_opt *option_find2(int opt)
   for (opts = daemon->dhcp_opts; opts; opts = opts->next)
     if (opts->opt == opt && (opts->flags & DHOPT_TAGOK))
       {
-        printf("wink: option_find2:- opt=%d rv=!NULL found opts->netid=%s opts->len=%d\n", opt, opts->netid->net, opts->len);
+        printf("wink: option_find2:- found opt=%d rv=!NULL, opts->netid.net=%s opts->len=%d\n", opt, opts->netid->net, opts->len);
         return opts;
       }
   
-  printf("wink: option_find2:- opt=%d rv=NULL not found\n", opt);
+  printf("wink: option_find2:- not found opt=%d rv=NULL\n", opt);
   return NULL;
 }
 
@@ -2489,6 +2489,8 @@ static void do_options(struct dhcp_context *context,
   int done_vendor_class = 0;
   struct dhcp_netid *tagif;
   struct dhcp_netid_list *id_list;
+
+  printf("wink: do_options:+\n");
 
   /* filter options based on tags, those we want get DHOPT_TAGOK bit set */
   if (context)
@@ -2871,6 +2873,8 @@ static void do_options(struct dhcp_context *context,
       mess->file[0] = f0;
       mess->sname[0] = s0;
     }
+
+  printf("wink: do_options:-\n");
 }
 
 static void apply_delay(u32 xid, time_t recvtime, struct dhcp_netid *netid)
