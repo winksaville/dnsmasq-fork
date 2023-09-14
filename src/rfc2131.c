@@ -2115,12 +2115,17 @@ static int in_list(unsigned char *list, int opt)
 
 static struct dhcp_opt *option_find2(int opt)
 {
+  printf("wink: option_find2:+ opt=%d\n", opt);
   struct dhcp_opt *opts;
   
   for (opts = daemon->dhcp_opts; opts; opts = opts->next)
     if (opts->opt == opt && (opts->flags & DHOPT_TAGOK))
-      return opts;
+      {
+        printf("wink: option_find2:- opt=%d rv=!NULL found opts->netid=%s opts->len=%d\n", opt, opts->netid->net, opts->len);
+        return opts;
+      }
   
+  printf("wink: option_find2:- opt=%d rv=NULL not found\n", opt);
   return NULL;
 }
 
